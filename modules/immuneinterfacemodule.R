@@ -4,35 +4,37 @@ immuneinterface_UI <- function(id) {
     tagList(
         titleBox("Clonal Diversity by Sample Group"),
         fluidRow(
-            optionsBox(width = 4,
-                       
-                       # Drop-down selected diversity metrics
-                       selectInput(
-                           inputId = ns("diversity_metric_choice"),
-                           label = "Select Receptor Type(s)",
-                           choices = config_yaml$diversity_metric_choices,
-                           selected = "Shannon"
-                       ),
-                       
-                       # Checkbox selected receptor type(s)
-                       checkboxGroupInput(
-                           inputId = ns("receptor_type_choices"),
-                           label = "Select Receptor Type(s)",
-                           choices = config_yaml$receptor_type_choices,
-                           selected = "TCR"
-                       ),
-                       
-                       # Checkbox z-score option
-                       checkboxInput(
-                           inputId = ns("ztransform"),
-                           label = "Plot Z-scores",
-                           value = FALSE
-                       )
+            optionsBox(
+                width = 4,
+                
+                # Drop-down selected diversity metrics
+                selectInput(
+                    inputId = ns("diversity_metric_choice"),
+                    label = "Select Receptor Type(s)",
+                    choices = config_yaml$diversity_metric_choices,
+                    selected = "Shannon"
+                ),
+                
+                # Checkbox selected receptor type(s)
+                checkboxGroupInput(
+                    inputId = ns("receptor_type_choices"),
+                    label = "Select Receptor Type(s)",
+                    choices = config_yaml$receptor_type_choices,
+                    selected = "TCR"
+                ),
+                
+                # Checkbox z-score option
+                checkboxInput(
+                    inputId = ns("ztransform"),
+                    label = "Plot Z-scores",
+                    value = FALSE
+                )
             ),
             
             plotBox(width = 8,
                     # Show a plot of the generated distribution
-                    plotOutput(outputId = ns("diversityPlot"))
+                    plotlyOutput(ns("diversityPlot")) %>% 
+                        shinycssloaders::withSpinner()
             )
         )
         
@@ -43,7 +45,7 @@ immuneinterface <- function(
     input, output, session, group_display_choice, group_internal_choice, 
     subset_df, plot_colors) {
     
-    output$diversityPlot <- renderPlot({
+    output$diversityPlot <- renderPlotly({
         diversity_metric   <- input$diversity_metric_choice
         receptor_types <- input$receptor_type_choices
         
@@ -57,7 +59,7 @@ immuneinterface <- function(
             build_immuneinterface_df(group_internal_choice(), diversity_vars) %>% 
             dplyr::select(GROUP = group_internal_choice(), "diversity", everything()) %>% 
             tidyr::drop_na()
-            # get_complete_df_by_columns(c("GROUP", "diversity"))
+        # get_complete_df_by_columns(c("GROUP", "diversity"))
         
         print(plot_df)
         ## adjust scales
@@ -81,7 +83,7 @@ immuneinterface <- function(
         ## custom colors if available
         
         print(plot_df)
-        x <- create_boxplot(
+        create_boxplot(
             plot_df,
             x_col = "GROUP",
             y_col = "diversity",
@@ -90,7 +92,6 @@ immuneinterface <- function(
             fill_colors = plot_colors()
             # color_col = "receptor"
         )
-        print(x)
     })
 }
 
