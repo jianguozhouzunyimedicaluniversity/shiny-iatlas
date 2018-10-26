@@ -10,7 +10,7 @@ immuneinterface_UI <- function(id) {
                        selectInput(
                            inputId = ns("diversity_metric_choice"),
                            label = "Select Receptor Type(s)",
-                           choices = as.character(panimmune_data$diversity_metric_choices),
+                           choices = config_yaml$diversity_metric_choices,
                            selected = "Shannon"
                        ),
                        
@@ -18,7 +18,7 @@ immuneinterface_UI <- function(id) {
                        checkboxGroupInput(
                            inputId = ns("receptor_type_choices"),
                            label = "Select Receptor Type(s)",
-                           choices = as.character(panimmune_data$receptor_type_choices),
+                           choices = config_yaml$receptor_type_choices,
                            selected = "TCR"
                        ),
                        
@@ -55,19 +55,23 @@ immuneinterface <- function(
         
         plot_df <- subset_df() %>% 
             build_immuneinterface_df(group_internal_choice(), diversity_vars) %>% 
-            build_boxplot_df(group_internal_choice(), "diversity")
-            
-            
-            ## adjust scales
-            if (diversity_metric %in% c("Evenness", "Richness")) {
-                plot_df <- plot_df %>%
-                    mutate(diversity = log10(diversity + 1))
-                scale_label <- glue::glue("log10({metric}+1)",
-                                          metric = diversity_metric
-                )
-            } else {
-                scale_label <- diversity_metric
-            }
+            dplyr::select(GROUP = group_internal_choice(), "diversity", everything()) %>% 
+            tidyr::drop_na()
+            # get_complete_df_by_columns(c("GROUP", "diversity"))
+        
+        print(plot_df)
+        ## adjust scales
+        if (diversity_metric %in% c("Evenness", "Richness")) {
+            plot_df <- plot_df %>%
+                mutate(diversity = log10(diversity + 1))
+            scale_label <- glue::glue("log10({metric}+1)",
+                                      metric = diversity_metric
+            )
+        } else {
+            scale_label <- diversity_metric
+        }
+        
+        print(plot_df)
         
         if (input$ztransform) {
             plot_df <- ztransform_df(plot_df)
@@ -75,15 +79,18 @@ immuneinterface <- function(
         }
         y_label <- glue::glue("Diversity [{label}]", label = scale_label)
         ## custom colors if available
-        plot <- build_boxplot(
+        
+        print(plot_df)
+        x <- create_boxplot(
             plot_df,
-            fill_factor = group_internal_choice(),
-            x_label = input$selection_choice,
-            y_label = y_label,
-            fill_colors = plot_colors(),
-            facet = "receptor ~ ."
+            x_col = "GROUP",
+            y_col = "diversity",
+            xlab = input$selection_choice,
+            ylab = y_label,
+            fill_colors = plot_colors()
+            # color_col = "receptor"
         )
-        print(plot)
+        print(x)
     })
 }
 

@@ -37,10 +37,10 @@ explorepage <- dashboardPage(
                # menuSubItem(
                #   "Genomic State",
                #   icon = icon("chevron-circle-right")),
-               # menuSubItem(
-               #   "Immune Interface",
-               #   tabName = "clonal_diversity",
-               #   icon = icon("chevron-circle-right")),
+               menuSubItem(
+                 "Immune Interface",
+                 tabName = "clonal_diversity",
+                 icon = icon("chevron-circle-right")),
                menuSubItem(
                  "TIL Maps",
                  tabName = "tilmap_features",
@@ -195,6 +195,14 @@ explorepage <- dashboardPage(
               imgSrc = "images/drivers.png",
               boxText = "Explore Associations of Microenvironment with Driver Mutations.",
               linkText = "Open Module"
+            ),
+            imgLinkBox(
+                width = 6,
+                linkId = "link_to_module2",
+                title = "Immune Interface",
+                imgSrc = "images/cell_content.png",
+                boxText = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+                linkText = "Open Module"
             )
           )
         )

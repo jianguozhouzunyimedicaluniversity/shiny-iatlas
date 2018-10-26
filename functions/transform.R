@@ -507,26 +507,25 @@ build_ci_mat <- function(
 
 # ** Immune interface module ----
 
-# build_immuneinterface_df <- function(
-#     build_df, sample_group, diversity_vars
-# ) {
-#     df %>%
-#         select(sample_group, diversity_vars) %>%
-#         .[complete.cases(.), ] %>%
-#         gather(metric, diversity, -1) %>%
-#         separate(metric, into = c("receptor", "metric"), sep = "_")
-# }
-# 
-# ztransform_df <- function(df) {
-#     df %>%
-#         group_by(receptor, metric) %>%
-#         mutate(
-#             div_mean = mean(diversity),
-#             div_sd = sd(diversity)
-#         ) %>%
-#         ungroup() %>%
-#         mutate(diversity = (diversity - div_mean) / div_sd)
-# }
+build_immuneinterface_df <- function(df, sample_group, diversity_vars) {
+    
+    df %>%
+        dplyr::select(sample_group, diversity_vars) %>%
+        tidyr::drop_na() %>% 
+        tidyr::gather(metric, diversity, -1) %>%
+        tidyr::separate(metric, into = c("receptor", "metric"), sep = "_")
+}
+
+ztransform_df <- function(df) {
+    df %>%
+        dplyr::group_by(receptor, metric) %>%
+        dplyr::mutate(
+            div_mean = mean(diversity),
+            div_sd = sd(diversity)
+        ) %>%
+        dplyr::ungroup() %>%
+        dplyr::mutate(diversity = (diversity - div_mean) / div_sd)
+}
 
 # ** Immunomodulators module ----
 
