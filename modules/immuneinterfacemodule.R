@@ -31,7 +31,7 @@ immuneinterface_UI <- function(id) {
                 )
             ),
             
-            plotBox(width = 8,
+            plotBox(width = 12,
                     # Show a plot of the generated distribution
                     plotlyOutput(ns("diversityPlot")) %>% 
                         shinycssloaders::withSpinner()
@@ -89,8 +89,8 @@ immuneinterface <- function(
             y_col = "diversity",
             xlab = input$selection_choice,
             ylab = y_label,
-            fill_colors = plot_colors()
-            # color_col = "receptor"
+            # fill_colors = plot_colors(),
+            color_col = "receptor"
         )
     })
 }

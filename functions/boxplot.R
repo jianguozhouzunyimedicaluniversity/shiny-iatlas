@@ -10,7 +10,7 @@ create_boxplot <- function(
     ylab = "", 
     title = "", 
     source_name = NULL, 
-    fill_colors = NA){
+    fill_colors = NULL){
     
     if(is.na(key_col)) key_col <- x_col
     if(is.na(color_col)) color_col <- x_col
@@ -41,12 +41,11 @@ create_boxplot <- function(
             source = source_name
         )) %>% 
         layout(
+            boxmode = "group",
             title = title,
             xaxis = list(title = xlab),
             yaxis = list(title = ylab)
         ) %>% 
         format_plotly() %>%
         I
-    
-    
 }
