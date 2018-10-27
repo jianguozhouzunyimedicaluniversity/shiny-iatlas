@@ -56,42 +56,47 @@ immuneinterface <- function(
         ## create dfp, the data frame for plotting, based on choices
         
         plot_df <- subset_df() %>% 
-            build_immuneinterface_df(group_internal_choice(), diversity_vars) %>% 
-            dplyr::select(GROUP = group_internal_choice(), "diversity", everything()) %>% 
-            tidyr::drop_na()
-        # get_complete_df_by_columns(c("GROUP", "diversity"))
+            build_immuneinterface_df(group_internal_choice(), diversity_vars, input$ztransform) 
         
-        print(plot_df)
-        ## adjust scales
-        if (diversity_metric %in% c("Evenness", "Richness")) {
-            plot_df <- plot_df %>%
-                mutate(diversity = log10(diversity + 1))
-            scale_label <- glue::glue("log10({metric}+1)",
-                                      metric = diversity_metric
+        y_lab <- create_immuneinterface_y_label(
+            diversity_metric, input$ztransform)
+        
+        if(length(receptor_types) == 1){
+            create_boxplot(
+                plot_df,
+                xlab = input$selection_choice,
+                ylab = y_lab,
+                color_col = NA,
+                fill_colors = plot_colors()
             )
+
         } else {
-            scale_label <- diversity_metric
+            create_boxplot(
+                plot_df,
+                xlab = input$selection_choice,
+                ylab = y_lab,
+                color_col = "receptor",
+                fill_colors = NULL
+            )
         }
         
-        print(plot_df)
-        
-        if (input$ztransform) {
-            plot_df <- ztransform_df(plot_df)
-            scale_label <- paste0("Z-score: ", scale_label)
-        }
-        y_label <- glue::glue("Diversity [{label}]", label = scale_label)
-        ## custom colors if available
-        
-        print(plot_df)
-        create_boxplot(
-            plot_df,
-            x_col = "GROUP",
-            y_col = "diversity",
-            xlab = input$selection_choice,
-            ylab = y_label,
-            # fill_colors = plot_colors(),
-            color_col = "receptor"
-        )
     })
+}
+
+create_immuneinterface_y_label <- function(diversity_metric, ztransform){
+    if (diversity_metric %in% c("Evenness", "Richness")){
+        y_label <- glue::glue(
+            "log10({metric}+1)", 
+            metric = diversity_metric
+        )
+    } else {
+        y_label <- diversity_metric
+    }
+    
+    if(ztransform){
+        y_label <- stringr::str_c("Z-score: ", y_label)
+    } 
+    
+    glue::glue("Diversity [{label}]", label = y_label)
 }
 

@@ -285,6 +285,31 @@ build_key_df <- function(feature_df, color_df, group_size_df){
 }
 
 
+# immuninterface functions ----------------------------------------------------
+
+build_immuneinterface_df <- function(
+    df, group_column, diversity_vars, ztransform) {
+    
+    assert_df_has_columns(df, c(group_column, diversity_vars))
+    result_df <- df %>%
+        dplyr::select(GROUP = group_column, diversity_vars) %>%
+        tidyr::drop_na() %>% 
+        tidyr::gather(metric, diversity, -1) %>%
+        tidyr::separate(metric, into = c("receptor", "metric"), sep = "_") %>% 
+        dplyr::select(x = "GROUP", y = "diversity", everything()) %>% 
+        tidyr::drop_na()
+    if(ztransform){
+        result_df <- ztransform_df_column(
+            result_df, 
+            column = "y", 
+            grouping_columns = c("receptor", "metric")) 
+    } 
+    assert_df_has_columns(result_df, c("x",  "y", "receptor",  "metric"))
+    assert_df_has_rows(result_df)
+    return(result_df)
+}
+
+
 # functions for making plot df label column -----------------------------------
 
 create_label <- function(
@@ -339,6 +364,26 @@ summarise_df_at_column <- function(df, column, grouping_columns, function_names)
         result_df <- dplyr::rename(result_df, !!function_names := column)
     }
     assert_df_has_columns(result_df, c(grouping_columns, function_names))
+    assert_df_has_rows(result_df)
+    return(result_df)
+}
+
+ztransform_df_column <- function(df, column, grouping_columns) {
+    assert_df_has_columns(df, c(column, grouping_columns))
+    result_df <- wrapr::let(
+        alias = c(Z_COL = column),
+        
+        result_df <- df %>% 
+            dplyr::group_by_at(vars(one_of(grouping_columns))) %>% 
+            dplyr::mutate(
+                mean = mean(Z_COL),
+                sd = sd(Z_COL)
+            ) %>% 
+            dplyr::ungroup() %>%
+            dplyr::mutate(Z_COL = (Z_COL - mean) / sd) %>%
+            dplyr::select(-c(mean, sd))
+    )
+    assert_df_has_columns(result_df, c(column, grouping_columns))
     assert_df_has_rows(result_df)
     return(result_df)
 }
@@ -519,25 +564,7 @@ build_ci_mat <- function(
 
 # ** Immune interface module ----
 
-build_immuneinterface_df <- function(df, sample_group, diversity_vars) {
-    
-    df %>%
-        dplyr::select(sample_group, diversity_vars) %>%
-        tidyr::drop_na() %>% 
-        tidyr::gather(metric, diversity, -1) %>%
-        tidyr::separate(metric, into = c("receptor", "metric"), sep = "_")
-}
 
-ztransform_df <- function(df) {
-    df %>%
-        dplyr::group_by(receptor, metric) %>%
-        dplyr::mutate(
-            div_mean = mean(diversity),
-            div_sd = sd(diversity)
-        ) %>%
-        dplyr::ungroup() %>%
-        dplyr::mutate(diversity = (diversity - div_mean) / div_sd)
-}
 
 # ** Immunomodulators module ----
 
