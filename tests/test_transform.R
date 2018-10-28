@@ -1,5 +1,6 @@
 library(yaml)
 library(tidyverse)
+library(testthat)
 
 config_yaml <- yaml::read_yaml("configuration.yaml")
 purrr::walk(config_yaml$libraries, library, character.only = T)
@@ -181,6 +182,74 @@ testthat::test_that("create_label", {
 })
 
 # other functions -------------------------------------------------------------
+
+testthat::test_that("build_regression_pvalue_df",{
+    test_df <- data_frame(
+        "group_col" = c(rep("group1", 5), rep("group2", 5)),
+        "response_col" = 1:10,
+        "predict_col1" = 11:20,
+        "predict_col2" = c(rep("var1", 3), rep("var2", 5), c(rep("var1", 2))))
+    result_df1 <- build_regression_pvalue_df(
+        test_df, 
+        "response_col",
+        "predict_col1",
+        "predict_col1",
+        "group_col")
+    testthat::expect_equal(result_df1$group_col, c("group1", "group2"))
+    testthat::expect_equal(result_df1$pval, c(0, 0))
+    
+    result_df2 <- build_regression_pvalue_df(
+        test_df,
+        "response_col",
+        c("predict_col1", "predict_col2"),
+        "predict_col1",
+        "group_col")
+    testthat::expect_equal(result_df2$group_col, c("group1", "group2"))
+    testthat::expect_equal(result_df2$pval, c(0, 0))
+    
+    result_df3 <- build_regression_pvalue_df(
+        test_df,
+        "response_col",
+        c("predict_col1", "predict_col2"),
+        "predict_col2var2",
+        "group_col")
+    testthat::expect_equal(result_df3$group_col, c("group1", "group2"))
+    testthat::expect_equal(result_df3$pval, c(0.589, 0.465), tolerance = 0.1)
+        
+})
+
+
+
+testthat::test_that("get_regression_pvalues",{
+    test_df <- data_frame(
+        "split_col" = c(rep("group1", 5), rep("group2", 5)),
+        "response_col" = 1:10,
+        "predict_col1" = 11:20)
+    testthat::expect_equal(
+        get_regression_pvalues(test_df, "split_col", "response_col ~ predict_col1", "predict_col1"),
+        c("group1" = 2.294598e-47, "group2" = 1.564507e-45))
+})
+
+testthat::test_that("get_regression_pvalue",{
+    test_df <- data_frame(
+        "response_col" = 1:5,
+        "predict_col1" = 10:14,
+        "predict_col2" = c(rep("var1", 3), rep("var2", 2)))
+    testthat::expect_equal(
+        get_regression_pvalue(test_df, "response_col ~ predict_col1", "predict_col1"),
+        0)
+    testthat::expect_equal(
+        get_regression_pvalue(test_df, response_col ~ predict_col1, "predict_col1"),
+        0)
+    testthat::expect_equal(
+        get_regression_pvalue(test_df, response_col ~ predict_col1 + predict_col2, "predict_col1"),
+        0)
+    testthat::expect_equal(
+        get_regression_pvalue(test_df, response_col ~ predict_col1 + predict_col2, "predict_col2var2"),
+        0.5,
+        tolerance = 0.1)
+})
+
 
 testthat::test_that("summarise_df_at_column",{
     test_df1 <- data_frame(

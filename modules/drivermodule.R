@@ -115,10 +115,7 @@ drivers <- function(
             compute_driver_associations(
                 df_for_regression(),
                 response_var = input$response_variable,
-                group_column = group_internal_choice(),
-                group_options = get_unique_column_values(
-                    group_internal_choice(), 
-                    subset_df())) %>% 
+                group_column = group_internal_choice()) %>% 
             rename(label="mutation_group",y="neglog_pval",x="effect_size") 
     })
     

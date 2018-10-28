@@ -285,6 +285,26 @@ build_key_df <- function(feature_df, color_df, group_size_df){
 }
 
 
+# drivermutations -------------------------------------------------------------
+##
+## Compute p-value and effect size for each combo and combine to single data frame
+##
+compute_driver_associations <- function(df, response_var, group_column){
+    assert_df_has_columns(df, c(response_var, group_column, "mutation_group"))
+    res1 <- df %>% 
+        build_regression_pvalue_df(
+            response_var,
+            predictor_columns = "value",
+            predictor_pvalue = "valueMut",
+            group_column = "mutation_group") %>% 
+        dplyr::mutate(neglog_pval = -log10(pval)) %>% 
+        dplyr::select("mutation_group", neglog_pval)
+    res2 <- compute_effect_size_per_combo(df, response_var, group_column)
+    result_df <- inner_join(res1, res2, by="mutation_group") ## returns df with combo,neglog_pval,effect_size
+    return(result_df)
+}
+
+
 # functions for making plot df label column -----------------------------------
 
 create_label <- function(
@@ -328,6 +348,45 @@ create_label <- function(
 
 
 # other functions -------------------------------------------------------------
+
+build_regression_pvalue_df <- function(
+    df, response_column, predictor_columns, predictor_pvalue, group_column){
+    
+    assert_df_has_columns(df, c(response_column, group_column, predictor_columns))
+    
+    formula <- predictor_columns %>% 
+        stringr::str_c(collapse = " + ") %>% 
+        stringr::str_c(response_column, " ~ ", .)
+
+    result_df <- df %>% 
+        get_regression_pvalues(
+            split_column = group_column,
+            formula = formula,
+            predictor_pvalue = predictor_pvalue) %>% 
+        tibble::enframe() %>% 
+        magrittr::set_colnames(c(group_column, "pval")) 
+    assert_df_has_columns(result_df, c(group_column, "pval"))
+    assert_df_has_rows(result_df)
+    return(result_df)
+}
+
+get_regression_pvalues <- function(df, split_column, formula, predictor_pvalue){
+    assert_df_has_columns(df, split_column)
+    df %>%
+        split(., magrittr::extract2(df, split_column)) %>%
+        parallel::mclapply(get_regression_pvalue, formula, predictor_pvalue, mc.cores = NCORES) %>% 
+        unlist() 
+}
+
+
+get_regression_pvalue <- function(df, formula, predictor_pvalue){
+    pvalue <-  
+        lm(formula, data = df) %>%
+        summary %>% 
+        use_series(coefficients) %>% 
+        .[predictor_pvalue, "Pr(>|t|)"]
+}
+
 
 summarise_df_at_column <- function(df, column, grouping_columns, function_names){
     assert_df_has_columns(df, c(column, grouping_columns))
@@ -655,24 +714,7 @@ build_filtered_mutation_df_pancan <- function(df,count_threshold=80){   # select
 ##
 ## Compute p values for each 'combo' of driver mutation and cohort
 ##
-compute_pvals_per_combo <- function(df, value_column, group_column){
-    result_vec <- wrapr::let(
-        c(response_var=value_column,
-          gc=group_column),
-        df %>% 
-            split(.$mutation_group) %>% 
-            map( ~ lm(response_var ~ value, data=.)) %>%
-            map(summary) %>%
-            map("coefficients") %>% 
-            map(~. ["valueMut","Pr(>|t|)"]) %>%
-            unlist()
-    )
-    
-    data.frame(
-        mutation_group=as.vector(names(result_vec)),
-        neglog_pval=as.vector(-log10(result_vec)),
-        stringsAsFactors = FALSE)
-}
+
 
 ##
 ## Compute effect size  for each 'combo' of driver mutation and cohort
@@ -680,24 +722,18 @@ compute_pvals_per_combo <- function(df, value_column, group_column){
 
 compute_effect_size_per_combo <- function(df, value_column, group_column){
     wrapr::let(
-        c(response_var=value_column,gc=group_column),
+        c(response_var = value_column, gc = group_column),
         df_means <- df %>% 
-            group_by(mutation_group,value) %>%
-            summarize(mean_response=mean(response_var)) %>%
-            spread(value,mean_response) %>%
-            mutate(effect_size=-log10(Wt/Mut)) %>%
-            select(-c(Wt,Mut)) %>% as.data.frame
+            group_by(mutation_group, value) %>%
+            summarize(mean_response = mean(response_var)) %>%
+            spread(value, mean_response) %>%
+            mutate(effect_size = -log10( Wt/Mut)) %>%
+            select( -c(Wt, Mut)) %>% 
+            as.data.frame
     )
 }
 
 
 
 
-##
-## Compute p-value and effect size for each combo and combine to single data frame
-##
-compute_driver_associations <- function(df_for_regression,response_var,group_column,group_options){
-    res1 <- compute_pvals_per_combo(df_for_regression,response_var, group_column)
-    res2 <- compute_effect_size_per_combo(df_for_regression,response_var, group_column)
-    inner_join(res1,res2,by="mutation_group") ## returns df with combo,neglog_pval,effect_size
-}
+
