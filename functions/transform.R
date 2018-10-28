@@ -300,8 +300,24 @@ compute_driver_associations <- function(df, response_var, group_column){
         dplyr::mutate(neglog_pval = -log10(pval)) %>% 
         dplyr::select("mutation_group", neglog_pval)
     res2 <- compute_effect_size_per_combo(df, response_var, group_column)
+    print(res2)
     result_df <- inner_join(res1, res2, by="mutation_group") ## returns df with combo,neglog_pval,effect_size
     return(result_df)
+}
+
+compute_effect_size_per_combo <- function(df, value_column, group_column){
+    
+    assert_df_has_columns(df, c(value_column, "value", "mutation_group"))
+    result_df <- df %>% 
+        dplyr::select(response = value_column, value, mutation_group) %>% 
+        dplyr::group_by(mutation_group, value) %>%
+        dplyr::summarize(mean_response = mean(response)) %>%
+        tidyr::spread(value, mean_response) %>%
+        dplyr::mutate(effect_size = -log10( Wt/Mut)) %>%
+        dplyr::select(mutation_group, effect_size)
+    assert_df_has_rows(result_df)
+    return(result_df)
+
 }
 
 
@@ -720,18 +736,7 @@ build_filtered_mutation_df_pancan <- function(df,count_threshold=80){   # select
 ## Compute effect size  for each 'combo' of driver mutation and cohort
 ##
 
-compute_effect_size_per_combo <- function(df, value_column, group_column){
-    wrapr::let(
-        c(response_var = value_column, gc = group_column),
-        df_means <- df %>% 
-            group_by(mutation_group, value) %>%
-            summarize(mean_response = mean(response_var)) %>%
-            spread(value, mean_response) %>%
-            mutate(effect_size = -log10( Wt/Mut)) %>%
-            select( -c(Wt, Mut)) %>% 
-            as.data.frame
-    )
-}
+
 
 
 
