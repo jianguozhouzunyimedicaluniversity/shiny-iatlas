@@ -72,7 +72,7 @@ drivers <- function(
     
     mutation_df <- reactive(build_mutation_df(
         df = subset_df(),
-        response_var = input$response_variable,
+        response_column = input$response_variable,
         group_column = group_internal_choice(),
         group_options = get_unique_column_values(group_internal_choice(), subset_df())))
     
@@ -113,9 +113,7 @@ drivers <- function(
         } 
         df_for_plot <- 
             compute_driver_associations(
-                df_for_regression(),
-                response_var = input$response_variable,
-                group_column = group_internal_choice()) %>% 
+                df_for_regression()) %>% 
             rename(label="mutation_group",y="neglog_pval",x="effect_size") 
     })
     
@@ -152,6 +150,7 @@ drivers <- function(
         df <- 
             df_for_regression() %>% 
             filter(mutation_group == mutation_group_selected)
+        print(df)
         
         
         mutation <- as.character(df[1,"mutation"])
@@ -164,12 +163,12 @@ drivers <- function(
             round(4) %>% 
             as.character()
         
-        cohort <- stringr::str_replace(mutation_group_selected,fixed(paste(c(mutation,"."),collapse="")),"")
+        cohort <- stringr::str_replace(mutation_group_selected, fixed(paste(c(mutation,"."),collapse="")),"")
         # cohort by string parsing above. For some reason, the following returns a number when working with TCGA Subtypes
         # cohort <- as.character(dff[1,group_internal_choice()])
         
-        dfb <- df %>% rename(x=value,y=input$response_variable) %>% select(x,y)
-        
+        dfb <- dplyr::select(df, x = value, y = RESPONSE)
+
         
         plot_title = paste(c("Cohort:",cohort,
                              "; P-value:",point_selected_pval,

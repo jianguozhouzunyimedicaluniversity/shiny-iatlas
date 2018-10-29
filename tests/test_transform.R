@@ -6,6 +6,8 @@ config_yaml <- yaml::read_yaml("configuration.yaml")
 purrr::walk(config_yaml$libraries, library, character.only = T)
 purrr::walk(config_yaml$function_files, source)
 
+NCORES <- parallel::detectCores()
+
 # immunomodulator functions ---------------------------------------------------
 
 testthat::test_that("build_immunomodulator_expression_df", {

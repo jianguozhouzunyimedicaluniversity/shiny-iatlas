@@ -289,19 +289,55 @@ build_key_df <- function(feature_df, color_df, group_size_df){
 ##
 ## Compute p-value and effect size for each combo and combine to single data frame
 ##
-compute_driver_associations <- function(df, response_var, group_column){
-    assert_df_has_columns(df, c(response_var, group_column, "mutation_group"))
+
+build_mutation_df <- function(df, response_column, group_column, group_options){
+    
+    assert_df_has_columns(df, c(response_column, group_column, "ParticipantBarcode"))
+    
+    response_variable_df <- df %>% 
+        dplyr::select(
+            ID = ParticipantBarcode, 
+            GROUP = group_column, 
+            RESPONSE = response_column) %>% 
+        dplyr::filter(GROUP %in% group_options) %>% 
+        tidyr::drop_na()
+    assert_df_has_rows(response_variable_df)
+        
+    driver_mutation_df <-
+        panimmune_data$driver_mutation_df %>%
+        tidyr::gather(key = "mutation", value = "value", -c("ParticipantBarcode")) %>%
+        dplyr::mutate(value = fct_relevel(value, "Wt", "Mut")) %>% 
+        dplyr::select(ID = ParticipantBarcode, mutation, value)
+
+    mutation_df <- 
+        dplyr::left_join(
+            response_variable_df,
+            driver_mutation_df,
+            by = "ID") %>% 
+        get_complete_df_by_columns(c("ID", "GROUP", "RESPONSE",  "mutation", "value"))
+    
+    if(nrow(mutation_df) == 0){
+        mutation_df <- NULL
+    } else {
+        mutation_df <- dplyr::mutate(mutation_df, mutation_group = stringr::str_c(mutation, GROUP, sep = "."))
+    }
+    print(mutation_df)
+    return(mutation_df)
+}
+
+
+compute_driver_associations <- function(df){
+    assert_df_has_columns(df, c("RESPONSE", "GROUP", "mutation_group", "value"))
     res1 <- df %>% 
         build_regression_pvalue_df(
-            response_var,
+            "RESPONSE",
             predictor_columns = "value",
             predictor_pvalue = "valueMut",
             group_column = "mutation_group") %>% 
         dplyr::mutate(neglog_pval = -log10(pval)) %>% 
         dplyr::select("mutation_group", neglog_pval)
-    res2 <- compute_effect_size_per_combo(df, response_var, group_column)
-    print(res2)
-    result_df <- inner_join(res1, res2, by="mutation_group") ## returns df with combo,neglog_pval,effect_size
+    res2 <- compute_effect_size_per_combo(df, "RESPONSE", "GROUP")
+    result_df <- inner_join(res1, res2, by = "mutation_group") ## returns df with combo,neglog_pval,effect_size
     return(result_df)
 }
 
@@ -625,24 +661,7 @@ build_ci_mat <- function(
 ##  Builds data frame used for the regression 
 ##
 
-build_mutation_df <- function(df, response_var, group_column, group_options){
-    fmx_df.intermediate <- build_intermediate_fmx_df_for_groups(
-        df,
-        response_var,
-        group_column,
-        group_options)
-    driver_mutation_df.long <-
-        panimmune_data$driver_mutation_df %>%
-        tidyr::gather(key = "mutation", value = "value", -c("ParticipantBarcode")) %>%
-        dplyr::mutate(value = fct_relevel(value, "Wt", "Mut"))
-    mutation_df <- build_driver_mutation_df(driver_mutation_df.long, fmx_df.intermediate)
-    if(nrow(mutation_df) == 0){
-        mutation_df <- NULL
-    } else {
-        mutation_df <- label_driver_mutation_df(mutation_df, group_column)
-    }
-    return(mutation_df)
-}
+
 
 
 #
@@ -699,14 +718,7 @@ get_untestable_mutation_groups <- function(df, testable_mutation_groups){
 ##
 ## restrict fmx_df to rows with available group values and a single selected value column
 ##
-build_intermediate_fmx_df_for_groups <- function(
-    df, value_column, group_column, group_options, id_column = "ParticipantBarcode" ) {
-    wrapr::let(
-        c(GROUP = group_column),
-        result_df <- df %>% 
-            dplyr::select(id_column, GROUP, value_column) %>% 
-            dplyr::filter(GROUP %in% group_options)) %>% .[complete.cases(.),]    
-}
+
 
 ##
 ## filter mutation df to mutations meeting a minimum overall count_threshold
@@ -721,24 +733,3 @@ build_filtered_mutation_df_pancan <- function(df,count_threshold=80){   # select
   drivers.keep <- driver_mutation.mutcount %>% filter(mutation_count > count_threshold)  %>% .$mutation
   df %>% filter(mutation %in% drivers.keep)
 }
-
-
-
-
-
-
-##
-## Compute p values for each 'combo' of driver mutation and cohort
-##
-
-
-##
-## Compute effect size  for each 'combo' of driver mutation and cohort
-##
-
-
-
-
-
-
-
