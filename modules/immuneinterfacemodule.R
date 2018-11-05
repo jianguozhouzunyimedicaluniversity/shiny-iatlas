@@ -45,7 +45,13 @@ immuneinterface <- function(
     input, output, session, group_display_choice, group_internal_choice, 
     subset_df, plot_colors) {
     
+
     output$diversityPlot <- renderPlotly({
+
+
+        
+        req(!is.null(subset_df()), cancelOutput = T)
+        
         diversity_metric   <- input$diversity_metric_choice
         receptor_types <- input$receptor_type_choices
         

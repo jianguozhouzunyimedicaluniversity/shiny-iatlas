@@ -86,7 +86,12 @@ cellcontent_UI <- function(id) {
 
 # Server ----
 cellcontent <- function(
-    input, output, session, group_display_choice, group_internal_choice, 
+    input,
+    output, 
+    session, 
+    group_display_choice, 
+    group_internal_choice, 
+    sample_group_df,
     subset_df) {
     
     ns <- session$ns
@@ -97,9 +102,15 @@ cellcontent <- function(
     # ** Overall proportions bar plot render ----
     output$overall_props_barplot <- renderPlotly({
         
+        req(!is.null(subset_df()), cancelOutput = T)
+        
         cellcontent_df <- build_cellcontent_df(
             subset_df(),
             group_column = group_internal_choice())
+        
+        validate(need(
+            nrow(cellcontent_df) > 0, 
+            "Samples in current selected groups have no fraction data."))
         
         barplot_df <- build_cellcontent_barplot_df(
             cellcontent_df,
@@ -116,8 +127,15 @@ cellcontent <- function(
         )
     })
     
-    output$op_barplot_group_text <-
-        renderText(create_group_text_from_plotly("op_barplot"))
+    output$op_barplot_group_text <- renderText({
+        req(group_internal_choice(), sample_group_df(), cancelOutput = T)
+        
+        create_group_text_from_plotly(
+            "op_barplot", 
+            group_internal_choice(),
+            sample_group_df()
+        )
+    })
     
     # ** Overall proportions scatter plot renders ----
     output$lf_sf_corr_scatterplot <- renderPlotly({
@@ -150,6 +168,8 @@ cellcontent <- function(
     # ** Cell fractions bar plot render ----
     output$cell_frac_barplot <- renderPlotly({
         
+        req(!is.null(subset_df()), cancelOutput = T)
+        
         cell_fractions <- get_factored_variables_from_feature_df(
             input$cf_choice) %>% 
             as.character
@@ -159,6 +179,10 @@ cellcontent <- function(
             group_column = group_internal_choice(), 
             value_columns = cell_fractions
         )
+        
+        validate(need(
+            nrow(cell_fraction_df) > 0, 
+            "Samples in current selected groups have no selected fraction data."))
         
         barplot_df <- 
             build_cellcontent_barplot_df(
@@ -179,7 +203,15 @@ cellcontent <- function(
         
     })
     
-    output$cf_barplot_group_text <- 
-        renderText(create_group_text_from_plotly("cf_barplot"))
+    output$cf_barplot_group_text <- renderText({
+        req(group_internal_choice(), sample_group_df(), cancelOutput = T)
+        
+        create_group_text_from_plotly(
+            "cf_barplot", 
+            group_internal_choice(),
+            sample_group_df = sample_group_df()
+        )
+    })
+        
 }
 

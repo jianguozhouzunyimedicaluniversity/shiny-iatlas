@@ -92,9 +92,17 @@ survival_UI <- function(id) {
 }
 
 # Server ----
-survival <- function(input, output, session, ss_choice, group_internal_choice,
-                     group_options, subset_df, plot_colors)
-{
+survival <- function(
+    input, 
+    output, 
+    session, 
+    ss_choice,
+    group_internal_choice,
+    group_options, 
+    sample_group_df,
+    subset_df,
+    plot_colors
+){
     ns <- session$ns
     
     output$survplot_opts <- renderUI({
@@ -111,7 +119,7 @@ survival <- function(input, output, session, ss_choice, group_internal_choice,
     })
     
     output$survPlot <- renderPlot({
-        # req(input$var1_surv, cancelOutput = TRUE)
+        req(!is.null(subset_df()), cancelOutput = T)
         sample_groups <- get_unique_column_values(group_internal_choice(), subset_df())
         n_groups <- n_distinct(sample_groups)
         validate(
@@ -133,6 +141,7 @@ survival <- function(input, output, session, ss_choice, group_internal_choice,
             title <- input$var1_surv
         }
         
+        print(sample_groups)
         if (title %in% group_options()) {
             group_colors <- plot_colors()
         } else {
@@ -149,6 +158,9 @@ survival <- function(input, output, session, ss_choice, group_internal_choice,
     
     
     output$heatmapplot <- renderPlotly({
+        
+        req(!is.null(subset_df()), cancelOutput = T)
+        
         if(input$survival_type == "PFI"){
             time_col <- "OS_time"
             status_col <- "OS"
@@ -174,8 +186,16 @@ survival <- function(input, output, session, ss_choice, group_internal_choice,
         create_heatmap(ci_mat, "ci")
     })
     
-    output$heatmap_group_text <- renderText(
-        create_group_text_from_plotly("ci", key_column = "x"))
+    output$heatmap_group_text <- renderText({
+        req(group_internal_choice(), sample_group_df(), cancelOutput = T)
+      
+        create_group_text_from_plotly(
+            "ci",
+            group_internal_choice(), 
+            sample_group_df(),
+            key_column = "x")
+    })
+        
     
 }
 
